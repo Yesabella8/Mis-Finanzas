@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+  <title>Mis Finanzas</title>
+
+  <!-- App instalable (iPhone: Compartir > Añadir a pantalla de inicio) -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="theme-color" content="#111827">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Finanzas">
+  <meta name="format-detection" content="telephone=no">
+
+  <style>
+    :root {
+      --verde: #15803d;   --verde-bg: #dcfce7;
+      --rojo: #b91c1c;    --rojo-bg: #fee2e2;
+      --azul: #1d4ed8;    --azul-bg: #dbeafe;
+      --tinta: #111827;
+      --suave: #6b7280;
+      --fondo: #f3f4f6;
+      --borde: #e5e7eb;
+      --tab-alto: 56px;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      background: var(--fondo);
+      color: var(--tinta);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
+
+    body { min-height: 100vh; min-height: 100dvh; overflow-x: hidden; }
+
+    /* ---------- Encabezado (oscuro: se funde con la barra de estado del iPhone) ---------- */
+    .cabecera {
+      position: sticky; top: 0; z-index: 20;
+      background: var(--tinta);
+      color: #fff;
+      padding-top: env(safe-area-inset-top, 0px);
+    }
+    .cabecera-fila {
+      max-width: 520px; margin: 0 auto;
+      height: 52px;
+      padding: 0 8px 0 18px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .cabecera h1 { margin: 0; font-size: 19px; font-weight: 700; letter-spacing: -0.2px; }
+    .btn-icono {
+      width: 44px; height: 44px;
+      border: 0; background: transparent; color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 12px; cursor: pointer;
+    }
+    .btn-icono:active { background: rgba(255,255,255,.14); }
+    .btn-icono svg { width: 22px; height: 22px; }
+    .btn-icono.girando svg { animation: girar .8s linear infinite; }
+    @keyframes girar { to { transform: rotate(360deg); } }
+
+    .aviso-red {
+      display: none;
+      background: #fef3c7; color: #92400e;
+      font-size: 13px; font-weight: 600; text-align: center;
+      padding: 8px 12px;
+    }
+    .aviso-red.visible { display: block; }
+
+    /* ---------- Contenedor ---------- */
+    .contenedor {
+      width: 100%; max-width: 520px; margin: 0 auto;
+      padding: 16px 16px calc(var(--tab-alto) + env(safe-area-inset-bottom, 0px) + 24px);
+    }
+    .vista { display: none; }
+    .vista.activa { display: block; }
+
+    h2 { margin: 0 0 14px; font-size: 20px; font-weight: 800; letter-spacing: -0.3px; }
+
+    /* ---------- Resumen ---------- */
+    .balance {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+      margin-bottom: 16px;
+    }
+    .balance .item {
+      background: #fff; border: 1px solid var(--borde);
+      border-radius: 14px; padding: 12px 6px; text-align: center;
+      border-top: 3px solid var(--borde);
+      min-width: 0;
+    }
+    .balance .item.ingresos { border-top-color: var(--verde); }
+    .balance .item.gastos   { border-top-color: var(--rojo); }
+    .balance .item.ahorro   { border-top-color: var(--azul); }
+    .balance .etiqueta { font-size: 12px; font-weight: 600; color: var(--suave); margin-bottom: 3px; }
+    .balance .monto { font-size: 15px; font-weight: 800; letter-spacing: -0.3px; white-space: nowrap; }
+    .ingresos .monto { color: var(--verde); }
+    .gastos .monto   { color: var(--rojo); }
+    .ahorro .monto   { color: var(--azul); }
+
+    /* ---------- Formulario ---------- */
+    .tarjeta {
+      background: #fff; border: 1px solid var(--borde);
+      border-radius: 18px; padding: 18px;
+    }
+
+    label { display: block; margin: 16px 0 6px; font-size: 14px; font-weight: 600; color: var(--suave); }
+    label:first-of-type { margin-top: 0; }
+
+    input, select {
+      display: block;
+      width: 100%; max-width: 100%; min-width: 0;
+      height: 50px;
+      padding: 0 14px;
+      border: 1.5px solid var(--borde);
+      border-radius: 12px;
+      background-color: #f9fafb;
+      color: var(--tinta);
+      font: inherit; font-size: 16px;      /* 16px: evita el zoom automático de iOS */
+      -webkit-appearance: none; appearance: none;
+      text-align: left;
+    }
+    input[type="date"] { line-height: 46px; }
+    input[type="date"]::-webkit-date-and-time-value { text-align: left; margin: 0; min-height: 1.2em; }
+    input::placeholder { color: #9ca3af; }
+
+    select {
+      padding-right: 40px;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e");
+      background-repeat: no-repeat; background-position: right 12px center; background-size: 18px;
+    }
+
+    input:focus, select:focus {
+      outline: none; border-color: var(--tinta); background-color: #fff;
+      box-shadow: 0 0 0 3px rgba(17,24,39,.10);
+    }
+    .invalido { border-color: var(--rojo) !important; background-color: var(--rojo-bg) !important; }
+    .error-campo { display: none; margin-top: 5px; font-size: 13px; font-weight: 600; color: var(--rojo); }
+    .error-campo.visible { display: block; }
+
+    .btn-principal {
+      width: 100%; height: 54px; margin-top: 22px;
+      border: 0; border-radius: 14px;
+      background: var(--tinta); color: #fff;
+      font: inherit; font-size: 17px; font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-principal:active { transform: scale(.98); }
+    .btn-principal:disabled { opacity: .6; }
+
+    #mensaje { min-height: 20px; margin-top: 12px; text-align: center; font-size: 15px; font-weight: 600; }
+    #mensaje.ok { color: var(--verde); }
+    #mensaje.mal { color: var(--rojo); }
+
+    /* ---------- Dashboard ---------- */
+    .filtro {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      background: #fff; border: 1px solid var(--borde);
+      border-radius: 14px; padding: 10px 12px 10px 16px; margin-bottom: 14px;
+    }
+    .filtro label { margin: 0; white-space: nowrap; }
+    .filtro select { width: auto; min-width: 160px; height: 44px; }
+
+    .grafico { background: #fff; border: 1px solid var(--borde); border-radius: 18px; padding: 16px; margin-bottom: 14px; }
+    .grafico h3 { margin: 0 0 12px; font-size: 15px; font-weight: 700; }
+    .grafico canvas { display: block; width: 100% !important; max-height: 260px; }
+    .sin-datos { display: none; padding: 26px 0; text-align: center; color: var(--suave); font-size: 14px; }
+    .grafico.vacio canvas { display: none; }
+    .grafico.vacio .sin-datos { display: block; }
+
+    /* ---------- Historial ---------- */
+    .lista { background: #fff; border: 1px solid var(--borde); border-radius: 18px; padding: 4px 16px; }
+    .mov { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--borde); }
+    .mov:last-child { border-bottom: 0; }
+    .mov-izq { min-width: 0; }
+    .mov-desc { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mov-meta { margin-top: 2px; font-size: 13px; color: var(--suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mov-monto { font-size: 16px; font-weight: 800; white-space: nowrap; }
+    .mov-monto.ingreso { color: var(--verde); }
+    .mov-monto.gasto { color: var(--rojo); }
+    .vacio-lista { padding: 28px 0; text-align: center; color: var(--suave); font-size: 15px; }
+    .nota { margin: 12px 4px 0; text-align: center; color: var(--suave); font-size: 13px; }
+
+    /* ---------- Barra inferior ---------- */
+    .tabbar {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+      background: rgba(255,255,255,.96);
+      -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+      border-top: 1px solid var(--borde);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    .tabbar-fila { max-width: 520px; margin: 0 auto; display: flex; height: var(--tab-alto); }
+    .tab {
+      flex: 1; border: 0; background: none; color: var(--suave);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+      font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    .tab svg { width: 24px; height: 24px; }
+    .tab.activo { color: var(--tinta); }
+
+    /* ---------- Pantalla de clave ---------- */
+    .bloqueo {
+      position: fixed; inset: 0; z-index: 100;
+      background: var(--tinta); color: #fff;
+      display: none; align-items: center; justify-content: center;
+      padding: 24px;
+    }
+    .bloqueo.visible { display: flex; }
+    .bloqueo-caja { width: 100%; max-width: 360px; text-align: center; }
+    .bloqueo-caja .logo { width: 84px; height: 84px; border-radius: 20px; margin-bottom: 18px; }
+    .bloqueo-caja h2 { font-size: 24px; margin-bottom: 6px; }
+    .bloqueo-caja p { margin: 0 0 22px; color: #9ca3af; font-size: 15px; }
+    .bloqueo-caja input { background: #1f2937; border-color: #374151; color: #fff; text-align: center; }
+    .bloqueo-caja input:focus { background: #1f2937; border-color: #9ca3af; box-shadow: none; }
+    .bloqueo-caja .btn-principal { background: #f5b942; color: var(--tinta); }
+    #errorClave { min-height: 20px; margin-top: 12px; color: #fca5a5; font-size: 14px; font-weight: 600; }
+
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <!-- ===== Pantalla de clave ===== -->
+  <div class="bloqueo" id="bloqueo">
+    <form class="bloqueo-caja" id="formClave" autocomplete="off">
+      <img class="logo" src="apple-touch-icon.png" alt="">
+      <h2>Mis Finanzas</h2>
+      <p>Ingresa tu clave para continuar</p>
+      <input type="password" id="inputClave" placeholder="Clave" autocomplete="off" autocapitalize="off" autocorrect="off">
+      <button type="submit" class="btn-principal" id="btnEntrar">Entrar</button>
+      <div id="errorClave"></div>
+    </form>
+  </div>
+
+  <!-- ===== Cabecera ===== -->
+  <header class="cabecera">
+    <div class="cabecera-fila">
+      <h1>Mis Finanzas</h1>
+      <button class="btn-icono" id="btnActualizar" aria-label="Actualizar datos">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <path d="M20.5 15a9 9 0 1 1-2.1-9.4L23 10"></path>
+        </svg>
+      </button>
+    </div>
+    <div class="aviso-red" id="avisoRed">Sin conexión. Mostrando los últimos datos guardados.</div>
+  </header>
+
+  <main class="contenedor">
+
+    <!-- ===== Registrar ===== -->
+    <section id="vista-registro" class="vista activa">
+      <div class="balance">
+        <div class="item ingresos"><div class="etiqueta">Ingresos</div><div class="monto" id="totalIngresos">S/ 0.00</div></div>
+        <div class="item gastos"><div class="etiqueta">Gastos</div><div class="monto" id="totalGastos">S/ 0.00</div></div>
+        <div class="item ahorro"><div class="etiqueta">Ahorro</div><div class="monto" id="totalAhorro">S/ 0.00</div></div>
+      </div>
+
+      <div class="tarjeta">
+        <h2>Registrar movimiento</h2>
+
+        <label for="fecha">Fecha</label>
+        <input type="date" id="fecha">
+        <div class="error-campo" id="error-fecha"></div>
+
+        <label for="tipo">Tipo</label>
+        <select id="tipo"><option value="">Seleccionar tipo</option></select>
+        <div class="error-campo" id="error-tipo"></div>
+
+        <label for="categoria">Categoría</label>
+        <select id="categoria"><option value="">Seleccionar categoría</option></select>
+        <div class="error-campo" id="error-categoria"></div>
+
+        <label for="descripcion">Descripción</label>
+        <input type="text" id="descripcion" placeholder="Ej: sueldo, almuerzo, taxi" maxlength="200" autocomplete="off">
+
+        <label for="monto">Monto (S/)</label>
+        <input type="number" id="monto" placeholder="0.00" step="0.01" min="0.01" inputmode="decimal">
+        <div class="error-campo" id="error-monto"></div>
+
+        <label for="metodoPago">Método de pago</label>
+        <select id="metodoPago"><option value="">Seleccionar método</option></select>
+        <div class="error-campo" id="error-metodoPago"></div>
+
+        <button class="btn-principal" id="btnGuardar" type="button">Guardar movimiento</button>
+        <div id="mensaje"></div>
+      </div>
+    </section>
+
+    <!-- ===== Dashboard ===== -->
+    <section id="vista-dashboard" class="vista">
+      <h2>Dashboard</h2>
+
+      <div class="filtro">
+        <label for="periodo">Período</label>
+        <select id="periodo">
+          <option value="mes">Este mes</option>
+          <option value="anterior">Mes anterior</option>
+          <option value="30dias">Últimos 30 días</option>
+          <option value="todo">Todo</option>
+        </select>
+      </div>
+
+      <div class="grafico" id="card-ig"><h3>Ingresos vs. gastos</h3><canvas id="graficoIngresosGastos"></canvas><div class="sin-datos">Sin movimientos en este período</div></div>
+      <div class="grafico" id="card-cat"><h3>Gastos por categoría</h3><canvas id="graficoCategorias"></canvas><div class="sin-datos">Sin gastos en este período</div></div>
+      <div class="grafico" id="card-met"><h3>Gastos por método de pago</h3><canvas id="graficoMetodos"></canvas><div class="sin-datos">Sin gastos en este período</div></div>
+      <div class="grafico" id="card-mes"><h3>Evolución mensual (todos los meses)</h3><canvas id="graficoMensual"></canvas><div class="sin-datos">Aún no hay movimientos</div></div>
+    </section>
+
+    <!-- ===== Historial ===== -->
+    <section id="vista-historial" class="vista">
+      <h2>Historial</h2>
+      <div class="lista" id="listaMovimientos"></div>
+      <div class="nota" id="notaHistorial"></div>
+    </section>
+
+  </main>
+
+  <!-- ===== Barra inferior ===== -->
+  <nav class="tabbar">
+    <div class="tabbar-fila">
+      <button class="tab activo" id="tab-registro" data-vista="registro">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        Registrar
+      </button>
+      <button class="tab" id="tab-dashboard" data-vista="dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Dashboard
+      </button>
+      <button class="tab" id="tab-historial" data-vista="historial">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Historial
+      </button>
+    </div>
+  </nav>
+
+<script>
+(function () {
+  "use strict";
+
+  // =====================================================================
+  //  >>> AQUÍ PEGAS LA URL DE TU IMPLEMENTACIÓN DE APPS SCRIPT (la que termina en /exec) <<<
+  // =====================================================================
+  const API_URL = "https://script.google.com/macros/s/AKfycbzneWyqBNKRgdydOJ4Hkk85jRJQr47DgYD6QGLcB7Yz-eRUD8gEniFZ5UjNKWWbKBM/exec";
+  // =====================================================================
+
+  const UMBRAL_CONFIRMACION = 1000;   // montos desde S/ 1000 piden confirmación
+  const MAX_HISTORIAL = 100;          // movimientos mostrados en Historial
+
+  // ---------- Almacenamiento seguro (Safari en modo privado puede bloquearlo) ----------
+  function leer(k)  { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function guardarLS(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function borrarLS(k) { try { localStorage.removeItem(k); } catch (e) {} }
+
+  // ---------- Estado ----------
+  let clave = leer("fin_clave") || "";
+  let datos = { config: { tipos: [], categorias: [], metodosPago: [] }, movimientos: [] };
+  let vistaActual = "registro";
+  let dashboardDesactualizado = true;
+  const charts = {};
+
+  const $ = function (id) { return document.getElementById(id); };
+
+  // ---------- Utilidades ----------
+  function hoyISO() {                       // fecha LOCAL (no UTC), para no adelantar el día por la noche
+    const d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+  function iso(d) {
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+  function soles(n) {
+    return "S/ " + Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function esc(t) {
+    return String(t == null ? "" : t).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function fechaBonita(f) {                 // 2026-09-25 -> 25/09/2026
+    const p = String(f).split("-");
+    return p.length === 3 ? p[2] + "/" + p[1] + "/" + p[0] : f;
+  }
+
+  // ---------- Llamada a la API ----------
+  async function api(payload) {
+    const resp = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },   // evita el preflight CORS
+      body: JSON.stringify(Object.assign({ clave: clave }, payload))
+    });
+    const j = await resp.json();
+    if (!j.ok) {
+      const err = new Error(j.error || "Error");
+      err.codigo = j.error;
+      throw err;
+    }
+    return j;
+  }
+
+  // ---------- Pantalla de clave ----------
+  function mostrarBloqueo(msg) {
+    $("bloqueo").classList.add("visible");
+    $("errorClave").textContent = msg || "";
+    setTimeout(function () { $("inputClave").focus(); }, 50);
+  }
+  function ocultarBloqueo() { $("bloqueo").classList.remove("visible"); }
+
+  $("formClave").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const valor = $("inputClave").value.trim();
+    if (!valor) return;
+    clave = valor;
+    const btn = $("btnEntrar");
+    btn.disabled = true; btn.textContent = "Verificando...";
+    try {
+      await cargar();
+      guardarLS("fin_clave", clave);
+      $("inputClave").value = "";
+      ocultarBloqueo();
+    } catch (err) {
+      clave = "";
+      $("errorClave").textContent = err.codigo === "clave"
+        ? "Clave incorrecta. Inténtalo de nuevo."
+        : "No se pudo conectar. Revisa tu internet.";
+    } finally {
+      btn.disabled = false; btn.textContent = "Entrar";
+    }
+  });
+
+  // ---------- Carga de datos ----------
+  async function cargar() {
+    const j = await api({ accion: "datos" });
+    datos = { config: j.config, movimientos: j.movimientos };
+    guardarLS("fin_cache", JSON.stringify(datos));
+    $("avisoRed").classList.remove("visible");
+    renderTodo();
+  }
+
+  async function actualizar() {
+    const btn = $("btnActualizar");
+    btn.classList.add("girando");
+    try {
+      await cargar();
+    } catch (err) {
+      if (err.codigo === "clave") { borrarLS("fin_clave"); clave = ""; mostrarBloqueo("La clave cambió. Ingresa la nueva."); }
+      else { $("avisoRed").classList.add("visible"); }
+    } finally {
+      btn.classList.remove("girando");
+    }
+  }
+  $("btnActualizar").addEventListener("click", actualizar);
+
+  // ---------- Cálculos ----------
+  function filtrarPeriodo(periodo) {
+    const m = datos.movimientos;
+    if (periodo === "todo") return m;
+    const hoy = new Date(), y = hoy.getFullYear(), mes = hoy.getMonth();
+    let ini, fin;
+    if (periodo === "mes")           { ini = iso(new Date(y, mes, 1));     fin = iso(new Date(y, mes + 1, 0)); }
+    else if (periodo === "anterior") { ini = iso(new Date(y, mes - 1, 1)); fin = iso(new Date(y, mes, 0)); }
+    else                             { ini = iso(new Date(y, mes, hoy.getDate() - 29)); fin = iso(hoy); }
+    return m.filter(function (x) { return x.fecha >= ini && x.fecha <= fin; });
+  }
+  function sumar(lista, tipo) {
+    return lista.reduce(function (a, x) { return x.tipo === tipo ? a + x.monto : a; }, 0);
+  }
+  function agrupar(lista, campo) {          // solo gastos
+    const r = {};
+    lista.forEach(function (x) {
+      if (x.tipo !== "Gasto") return;
+      const k = x[campo] || "Sin dato";
+      r[k] = (r[k] || 0) + x.monto;
+    });
+    return r;
+  }
+
+  // ---------- Render ----------
+  function renderTodo() {
+    renderSelects();
+    renderResumen();
+    renderHistorial();
+    dashboardDesactualizado = true;
+    if (vistaActual === "dashboard") renderDashboard();
+  }
+
+  function llenarSelect(id, opciones, placeholder) {
+    const sel = $(id), previo = sel.value;
+    sel.innerHTML = "";
+    const o0 = document.createElement("option");
+    o0.value = ""; o0.textContent = placeholder;
+    sel.appendChild(o0);
+    opciones.forEach(function (t) {
+      const o = document.createElement("option");
+      o.value = t; o.textContent = t;
+      sel.appendChild(o);
+    });
+    if (previo && opciones.indexOf(previo) !== -1) sel.value = previo;
+  }
+  function renderSelects() {
+    llenarSelect("tipo", datos.config.tipos, "Seleccionar tipo");
+    llenarSelect("categoria", datos.config.categorias, "Seleccionar categoría");
+    llenarSelect("metodoPago", datos.config.metodosPago, "Seleccionar método");
+  }
+
+  function renderResumen() {
+    const ing = sumar(datos.movimientos, "Ingreso");
+    const gas = sumar(datos.movimientos, "Gasto");
+    $("totalIngresos").textContent = soles(ing);
+    $("totalGastos").textContent = soles(gas);
+    $("totalAhorro").textContent = soles(ing - gas);
+  }
+
+  function renderHistorial() {
+    const lista = $("listaMovimientos");
+    const movs = datos.movimientos.slice().reverse();
+    if (!movs.length) {
+      lista.innerHTML = '<div class="vacio-lista">Aún no hay movimientos. Registra el primero en la pestaña Registrar.</div>';
+      $("notaHistorial").textContent = "";
+      return;
+    }
+    lista.innerHTML = movs.slice(0, MAX_HISTORIAL).map(function (m) {
+      const ing = m.tipo === "Ingreso";
+      return '<div class="mov">' +
+        '<div class="mov-izq">' +
+          '<div class="mov-desc">' + esc(m.descripcion || m.categoria) + '</div>' +
+          '<div class="mov-meta">' + esc(fechaBonita(m.fecha)) + ' · ' + esc(m.categoria) + ' · ' + esc(m.metodoPago) + '</div>' +
+        '</div>' +
+        '<div class="mov-monto ' + (ing ? "ingreso" : "gasto") + '">' + (ing ? "+ " : "− ") + soles(m.monto) + '</div>' +
+      '</div>';
+    }).join("");
+    $("notaHistorial").textContent = movs.length > MAX_HISTORIAL
+      ? "Mostrando los últimos " + MAX_HISTORIAL + " de " + movs.length + " movimientos"
+      : "";
+  }
+
+  function dibujar(id, cardId, config, hayDatos) {
+    if (charts[id]) { charts[id].destroy(); charts[id] = null; }
+    $(cardId).classList.toggle("vacio", !hayDatos);
+    if (!hayDatos) return;
+    charts[id] = new Chart($(id), config);
+  }
+
+  const PALETA = ["#1d4ed8", "#0f766e", "#b45309", "#7c3aed", "#be123c", "#4b5563", "#0369a1", "#a16207"];
+  const leyenda = { position: "bottom", labels: { usePointStyle: true, padding: 14, font: { size: 13 } } };
+
+  function renderDashboard() {
+    dashboardDesactualizado = false;
+    const lista = filtrarPeriodo($("periodo").value);
+    const ing = sumar(lista, "Ingreso"), gas = sumar(lista, "Gasto");
+
+    dibujar("graficoIngresosGastos", "card-ig", {
+      type: "doughnut",
+      data: { labels: ["Ingresos", "Gastos"], datasets: [{ data: [ing, gas], backgroundColor: ["#15803d", "#b91c1c"], borderWidth: 0 }] },
+      options: { responsive: true, cutout: "66%", plugins: { legend: leyenda } }
+    }, ing + gas > 0);
+
+    const cat = agrupar(lista, "categoria");
+    dibujar("graficoCategorias", "card-cat", {
+      type: "bar",
+      data: { labels: Object.keys(cat), datasets: [{ data: Object.values(cat), backgroundColor: "#1d4ed8", borderRadius: 6 }] },
+      options: { responsive: true, plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, grid: { color: "#f1f5f9" } }, x: { grid: { display: false } } } }
+    }, Object.keys(cat).length > 0);
+
+    const met = agrupar(lista, "metodoPago");
+    dibujar("graficoMetodos", "card-met", {
+      type: "doughnut",
+      data: { labels: Object.keys(met), datasets: [{ data: Object.values(met), backgroundColor: PALETA, borderWidth: 0 }] },
+      options: { responsive: true, cutout: "66%", plugins: { legend: leyenda } }
+    }, Object.keys(met).length > 0);
+
+    const meses = {};
+    datos.movimientos.forEach(function (x) {
+      const k = x.fecha.slice(0, 7);
+      if (!meses[k]) meses[k] = { i: 0, g: 0 };
+      if (x.tipo === "Ingreso") meses[k].i += x.monto;
+      if (x.tipo === "Gasto") meses[k].g += x.monto;
+    });
+    const claves = Object.keys(meses).sort();
+    dibujar("graficoMensual", "card-mes", {
+      type: "line",
+      data: { labels: claves, datasets: [
+        { label: "Ingresos", data: claves.map(function (k) { return meses[k].i; }), borderColor: "#15803d", backgroundColor: "rgba(21,128,61,.08)", tension: .35, fill: true },
+        { label: "Gastos",   data: claves.map(function (k) { return meses[k].g; }), borderColor: "#b91c1c", backgroundColor: "rgba(185,28,28,.08)", tension: .35, fill: true }
+      ] },
+      options: { responsive: true, plugins: { legend: leyenda },
+        scales: { y: { beginAtZero: true, grid: { color: "#f1f5f9" } }, x: { grid: { display: false } } } }
+    }, claves.length > 0);
+  }
+
+  $("periodo").addEventListener("change", renderDashboard);
+
+  // ---------- Navegación ----------
+  function mostrarVista(nombre) {
+    vistaActual = nombre;
+    document.querySelectorAll(".vista").forEach(function (v) { v.classList.remove("activa"); });
+    document.querySelectorAll(".tab").forEach(function (t) { t.classList.remove("activo"); });
+    $("vista-" + nombre).classList.add("activa");
+    $("tab-" + nombre).classList.add("activo");
+    window.scrollTo(0, 0);
+    if (nombre === "dashboard" && dashboardDesactualizado) renderDashboard();
+  }
+  document.querySelectorAll(".tab").forEach(function (t) {
+    t.addEventListener("click", function () { mostrarVista(t.getAttribute("data-vista")); });
+  });
+
+  // ---------- Validación ----------
+  const CAMPOS = ["fecha", "tipo", "categoria", "monto", "metodoPago"];
+
+  function marcarError(id, msg) {
+    $(id).classList.add("invalido");
+    const e = $("error-" + id); e.textContent = msg; e.classList.add("visible");
+  }
+  function limpiarError(id) {
+    $(id).classList.remove("invalido");
+    const e = $("error-" + id); e.textContent = ""; e.classList.remove("visible");
+  }
+  CAMPOS.forEach(function (id) {
+    $(id).addEventListener("input", function () { limpiarError(id); });
+    $(id).addEventListener("change", function () { limpiarError(id); });
+  });
+
+  function validar() {
+    CAMPOS.forEach(limpiarError);
+    let primero = null;
+    function fallo(id, msg) { marcarError(id, msg); if (!primero) primero = id; }
+
+    const fecha = $("fecha").value, monto = $("monto").value;
+    if (!fecha) fallo("fecha", "Selecciona una fecha.");
+    else if (fecha > hoyISO()) fallo("fecha", "La fecha no puede ser futura.");
+    if (!$("tipo").value) fallo("tipo", "Selecciona el tipo de movimiento.");
+    if (!$("categoria").value) fallo("categoria", "Selecciona una categoría.");
+    if (!monto) fallo("monto", "Ingresa un monto.");
+    else if (isNaN(monto) || Number(monto) <= 0) fallo("monto", "El monto debe ser mayor a 0.");
+    if (!$("metodoPago").value) fallo("metodoPago", "Selecciona un método de pago.");
+
+    if (primero) $(primero).focus();
+    return !primero;
+  }
+
+  // ---------- Guardar ----------
+  function mensaje(texto, tipo) {
+    const m = $("mensaje");
+    m.textContent = texto; m.className = tipo || "";
+  }
+
+  async function guardar() {
+    if (!validar()) { mensaje("Revisa los campos marcados en rojo.", "mal"); return; }
+
+    const monto = Number($("monto").value);
+    if (monto >= UMBRAL_CONFIRMACION && !confirm("Vas a registrar " + soles(monto) + ". ¿Es correcto?")) return;
+
+    const btn = $("btnGuardar");
+    btn.disabled = true; btn.textContent = "Guardando...";
+    mensaje("");
+
+    try {
+      const j = await api({
+        accion: "guardar",
+        fecha: $("fecha").value,
+        tipo: $("tipo").value,
+        categoria: $("categoria").value,
+        descripcion: $("descripcion").value.trim(),
+        monto: monto,
+        metodoPago: $("metodoPago").value
+      });
+      datos.movimientos.push(j.movimiento);
+      guardarLS("fin_cache", JSON.stringify(datos));
+      $("descripcion").value = "";
+      $("monto").value = "";
+      renderResumen();
+      renderHistorial();
+      dashboardDesactualizado = true;
+      mensaje("✓ " + j.mensaje, "ok");
+      setTimeout(function () { if ($("mensaje").classList.contains("ok")) mensaje(""); }, 3500);
+    } catch (err) {
+      if (err.codigo === "clave") { borrarLS("fin_clave"); clave = ""; mostrarBloqueo("La clave cambió. Ingresa la nueva."); }
+      else if (err.codigo) mensaje(err.message, "mal");
+      else mensaje("No se pudo guardar. Revisa tu internet e inténtalo de nuevo.", "mal");
+    } finally {
+      btn.disabled = false; btn.textContent = "Guardar movimiento";
+    }
+  }
+  $("btnGuardar").addEventListener("click", guardar);
+
+  // ---------- Inicio ----------
+  function iniciar() {
+    $("fecha").value = hoyISO();
+    $("fecha").max = hoyISO();
+
+    if (API_URL.indexOf("PEGA_AQUI") === 0) {
+      mostrarBloqueo("Falta pegar la URL /exec en index.html (variable API_URL).");
+      return;
+    }
+    if (!clave) { mostrarBloqueo(""); return; }
+
+    // Muestra al instante lo último que se vio, y actualiza en segundo plano
+    const cache = leer("fin_cache");
+    if (cache) { try { datos = JSON.parse(cache); renderTodo(); } catch (e) {} }
+
+    cargar().catch(function (err) {
+      if (err.codigo === "clave") { borrarLS("fin_clave"); clave = ""; mostrarBloqueo("La clave cambió. Ingresa la nueva."); }
+      else { $("avisoRed").classList.add("visible"); }
+    });
+  }
+
+  // Al volver a abrir la app desde el ícono, refresca los datos
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible" && clave) actualizar();
+  });
+
+  iniciar();
+})();
+</script>
+</body>
+</html>
