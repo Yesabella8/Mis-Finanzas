@@ -224,6 +224,51 @@
     #errorClave { min-height: 20px; margin-top: 12px; color: #fca5a5; font-size: 14px; font-weight: 600; }
 
     @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+    /* ---------- Spinner ---------- */
+    .spinner {
+      display: inline-block; width: 18px; height: 18px;
+      border: 2.5px solid rgba(255,255,255,.35); border-top-color: #fff;
+      border-radius: 50%; animation: girar .7s linear infinite; vertical-align: -3px;
+    }
+    .bloqueo-caja .spinner { border-color: rgba(17,24,39,.25); border-top-color: var(--tinta); }
+
+    /* ---------- Esqueleto de carga ---------- */
+    @keyframes brillo { 0% { background-position: -200px 0; } 100% { background-position: 200px 0; } }
+    .esqueleto {
+      background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 37%, #e5e7eb 63%);
+      background-size: 400px 100%; animation: brillo 1.3s ease infinite;
+      border-radius: 6px; color: transparent !important;
+    }
+    .balance .item.cargando .monto { display: inline-block; width: 60px; height: 15px; }
+    .mov.esqueleto-fila { background: none; animation: none; }
+    .mov.esqueleto-fila .mov-desc, .mov.esqueleto-fila .mov-meta, .mov.esqueleto-fila .mov-monto { display: inline-block; }
+    .mov.esqueleto-fila .mov-desc { width: 140px; height: 14px; margin-bottom: 6px; }
+    .mov.esqueleto-fila .mov-meta { width: 100px; height: 11px; }
+    .mov.esqueleto-fila .mov-monto { width: 60px; height: 14px; }
+
+    /* Transición suave cuando los números reales reemplazan al esqueleto */
+    .monto { transition: opacity .25s ease; }
+
+    /* ---------- Confirmación al guardar ---------- */
+    .confirmacion {
+      position: fixed; inset: 0; z-index: 90;
+      background: rgba(17,24,39,.55);
+      display: none; align-items: center; justify-content: center;
+      opacity: 0;
+    }
+    .confirmacion.visible { display: flex; animation: confFade .55s ease forwards; }
+    .confirmacion .circulo {
+      width: 96px; height: 96px; border-radius: 50%;
+      background: var(--verde);
+      display: flex; align-items: center; justify-content: center;
+      transform: scale(.5); animation: confPop .4s cubic-bezier(.34,1.56,.64,1) forwards;
+    }
+    .confirmacion svg { width: 48px; height: 48px; stroke: #fff; stroke-width: 3; fill: none;
+      stroke-dasharray: 40; stroke-dashoffset: 40; animation: confCheck .35s ease .15s forwards; }
+    @keyframes confFade { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes confPop { to { transform: scale(1); } }
+    @keyframes confCheck { to { stroke-dashoffset: 0; } }
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -237,9 +282,18 @@
       <h2>Mis Finanzas</h2>
       <p>Ingresa tu clave para continuar</p>
       <input type="password" id="inputClave" placeholder="Clave" autocomplete="off" autocapitalize="off" autocorrect="off">
-      <button type="submit" class="btn-principal" id="btnEntrar">Entrar</button>
+      <button type="submit" class="btn-principal" id="btnEntrar">
+        <span id="btnEntrarTexto">Entrar</span>
+      </button>
       <div id="errorClave"></div>
     </form>
+  </div>
+
+  <!-- ===== Confirmación al guardar ===== -->
+  <div class="confirmacion" id="confirmacion">
+    <div class="circulo">
+      <svg viewBox="0 0 24 24"><polyline points="4 13 9 18 20 6"></polyline></svg>
+    </div>
   </div>
 
   <!-- ===== Cabecera ===== -->
@@ -260,10 +314,10 @@
 
     <!-- ===== Registrar ===== -->
     <section id="vista-registro" class="vista activa">
-      <div class="balance">
-        <div class="item ingresos"><div class="etiqueta">Ingresos</div><div class="monto" id="totalIngresos">S/ 0.00</div></div>
-        <div class="item gastos"><div class="etiqueta">Gastos</div><div class="monto" id="totalGastos">S/ 0.00</div></div>
-        <div class="item ahorro"><div class="etiqueta">Ahorro</div><div class="monto" id="totalAhorro">S/ 0.00</div></div>
+      <div class="balance" id="balanceMini">
+        <div class="item ingresos cargando"><div class="etiqueta">Ingresos</div><div class="monto esqueleto" id="totalIngresos">S/ 0.00</div></div>
+        <div class="item gastos cargando"><div class="etiqueta">Gastos</div><div class="monto esqueleto" id="totalGastos">S/ 0.00</div></div>
+        <div class="item ahorro cargando"><div class="etiqueta">Ahorro</div><div class="monto esqueleto" id="totalAhorro">S/ 0.00</div></div>
       </div>
 
       <div class="tarjeta">
@@ -320,7 +374,11 @@
     <!-- ===== Historial ===== -->
     <section id="vista-historial" class="vista">
       <h2>Historial</h2>
-      <div class="lista" id="listaMovimientos"></div>
+      <div class="lista" id="listaMovimientos">
+        <div class="mov esqueleto-fila"><div class="mov-izq"><div class="mov-desc esqueleto">Cargando movimiento</div><div class="mov-meta esqueleto">Cargando</div></div><div class="mov-monto esqueleto">S/ 0.00</div></div>
+        <div class="mov esqueleto-fila"><div class="mov-izq"><div class="mov-desc esqueleto">Cargando movimiento</div><div class="mov-meta esqueleto">Cargando</div></div><div class="mov-monto esqueleto">S/ 0.00</div></div>
+        <div class="mov esqueleto-fila"><div class="mov-izq"><div class="mov-desc esqueleto">Cargando movimiento</div><div class="mov-meta esqueleto">Cargando</div></div><div class="mov-monto esqueleto">S/ 0.00</div></div>
+      </div>
       <div class="nota" id="notaHistorial"></div>
     </section>
 
@@ -421,8 +479,8 @@
     const valor = $("inputClave").value.trim();
     if (!valor) return;
     clave = valor;
-    const btn = $("btnEntrar");
-    btn.disabled = true; btn.textContent = "Verificando...";
+    const btn = $("btnEntrar"), txt = $("btnEntrarTexto");
+    btn.disabled = true; txt.innerHTML = '<span class="spinner"></span> Verificando...';
     try {
       await cargar();
       guardarLS("fin_clave", clave);
@@ -434,7 +492,7 @@
         ? "Clave incorrecta. Inténtalo de nuevo."
         : "No se pudo conectar. Revisa tu internet.";
     } finally {
-      btn.disabled = false; btn.textContent = "Entrar";
+      btn.disabled = false; txt.textContent = "Entrar";
     }
   });
 
@@ -519,6 +577,35 @@
     $("totalIngresos").textContent = soles(ing);
     $("totalGastos").textContent = soles(gas);
     $("totalAhorro").textContent = soles(ing - gas);
+    document.querySelectorAll("#balanceMini .item").forEach(function (el) { el.classList.remove("cargando"); });
+    document.querySelectorAll("#balanceMini .monto").forEach(function (el) { el.classList.remove("esqueleto"); });
+  }
+
+  const ICONOS_CATEGORIA = {
+    comida: "🍽️", almuerzo: "🍽️", restaurante: "🍽️",
+    transporte: "🚗", taxi: "🚗", pasaje: "🚗", gasolina: "⛽",
+    casa: "🏠", alquiler: "🏠", renta: "🏠", servicios: "💡", luz: "💡", agua: "💧", internet: "📶",
+    salud: "🩺", medicina: "💊", farmacia: "💊",
+    educacion: "📚", estudios: "📚",
+    ropa: "👕", entretenimiento: "🎬", ocio: "🎬", suscripcion: "🎬",
+    super: "🛒", supermercado: "🛒", mercado: "🛒",
+    sueldo: "💼", ingreso: "💼", trabajo: "💼", ahorro: "🐷", regalo: "🎁", mascota: "🐾", telefono: "📱", celular: "📱"
+  };
+  function iconoCategoria(cat) {
+    const k = String(cat || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    for (const clave in ICONOS_CATEGORIA) { if (k.indexOf(clave) !== -1) return ICONOS_CATEGORIA[clave]; }
+    return "💳";
+  }
+
+  function esqueletoHistorial(n) {
+    let html = "";
+    for (let i = 0; i < n; i++) {
+      html += '<div class="mov esqueleto-fila"><div class="mov-izq">' +
+        '<div class="mov-desc esqueleto">Cargando movimiento</div>' +
+        '<div class="mov-meta esqueleto">Cargando</div></div>' +
+        '<div class="mov-monto esqueleto">S/ 0.00</div></div>';
+    }
+    return html;
   }
 
   function renderHistorial() {
@@ -533,7 +620,7 @@
       const ing = m.tipo === "Ingreso";
       return '<div class="mov">' +
         '<div class="mov-izq">' +
-          '<div class="mov-desc">' + esc(m.descripcion || m.categoria) + '</div>' +
+          '<div class="mov-desc">' + iconoCategoria(m.categoria) + ' ' + esc(m.descripcion || m.categoria) + '</div>' +
           '<div class="mov-meta">' + esc(fechaBonita(m.fecha)) + ' · ' + esc(m.categoria) + ' · ' + esc(m.metodoPago) + '</div>' +
         '</div>' +
         '<div class="mov-monto ' + (ing ? "ingreso" : "gasto") + '">' + (ing ? "+ " : "− ") + soles(m.monto) + '</div>' +
@@ -655,6 +742,13 @@
     m.textContent = texto; m.className = tipo || "";
   }
 
+  function mostrarConfirmacion() {
+    if (navigator.vibrate) { try { navigator.vibrate(40); } catch (e) {} }
+    const c = $("confirmacion");
+    c.classList.add("visible");
+    setTimeout(function () { c.classList.remove("visible"); }, 700);
+  }
+
   async function guardar() {
     if (!validar()) { mensaje("Revisa los campos marcados en rojo.", "mal"); return; }
 
@@ -682,6 +776,7 @@
       renderResumen();
       renderHistorial();
       dashboardDesactualizado = true;
+      mostrarConfirmacion();
       mensaje("✓ " + j.mensaje, "ok");
       setTimeout(function () { if ($("mensaje").classList.contains("ok")) mensaje(""); }, 3500);
     } catch (err) {
