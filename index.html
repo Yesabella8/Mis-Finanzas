@@ -20,11 +20,34 @@
       --verde: #15803d;   --verde-bg: #dcfce7;
       --rojo: #b91c1c;    --rojo-bg: #fee2e2;
       --azul: #1d4ed8;    --azul-bg: #dbeafe;
-      --tinta: #111827;
+      --tinta: #111827;              /* fijo: cabecera y botón principal, no cambia con el tema */
+      --texto: #111827;              /* texto general, sí cambia con el tema */
       --suave: #6b7280;
       --fondo: #f3f4f6;
+      --superficie: #ffffff;         /* fondo de tarjetas */
+      --campo-bg: #f9fafb;           /* fondo de inputs/selects */
       --borde: #e5e7eb;
+      --tabbar-bg: var(--tabbar-bg);
+      --sombra: var(--sombra);
+      --esq-1: #e5e7eb; --esq-2: #f3f4f6;   /* esqueleto de carga */
       --tab-alto: 56px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --verde: #4ade80;   --verde-bg: rgba(74,222,128,.14);
+        --rojo: #f87171;    --rojo-bg: rgba(248,113,113,.14);
+        --azul: #60a5fa;    --azul-bg: rgba(96,165,250,.14);
+        --texto: #f3f4f6;
+        --suave: #9ca3af;
+        --fondo: #0b0f17;
+        --superficie: #1a2130;
+        --campo-bg: #232b3d;
+        --borde: #2e3648;
+        --tabbar-bg: rgba(20,25,38,.92);
+        --sombra: rgba(0,0,0,.35);
+        --esq-1: #26304a; --esq-2: #313d5c;
+      }
     }
 
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -34,7 +57,7 @@
       padding: 0;
       width: 100%;
       background: var(--fondo);
-      color: var(--tinta);
+      color: var(--texto);
       font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       -webkit-font-smoothing: antialiased;
       -webkit-text-size-adjust: 100%;
@@ -92,7 +115,7 @@
       margin-bottom: 16px;
     }
     .balance .item {
-      background: #fff; border: 1px solid var(--borde);
+      background: var(--superficie); border: 1px solid var(--borde);
       border-radius: 14px; padding: 12px 6px; text-align: center;
       border-top: 3px solid var(--borde);
       min-width: 0;
@@ -108,7 +131,7 @@
 
     /* ---------- Formulario ---------- */
     .tarjeta {
-      background: #fff; border: 1px solid var(--borde);
+      background: var(--superficie); border: 1px solid var(--borde);
       border-radius: 18px; padding: 18px;
     }
 
@@ -122,8 +145,8 @@
       padding: 0 14px;
       border: 1.5px solid var(--borde);
       border-radius: 12px;
-      background-color: #f9fafb;
-      color: var(--tinta);
+      background-color: var(--campo-bg);
+      color: var(--texto);
       font: inherit; font-size: 16px;      /* 16px: evita el zoom automático de iOS */
       -webkit-appearance: none; appearance: none;
       text-align: left;
@@ -139,7 +162,7 @@
     }
 
     input:focus, select:focus {
-      outline: none; border-color: var(--tinta); background-color: #fff;
+      outline: none; border-color: var(--texto); background-color: var(--superficie);
       box-shadow: 0 0 0 3px rgba(17,24,39,.10);
     }
     .invalido { border-color: var(--rojo) !important; background-color: var(--rojo-bg) !important; }
@@ -163,13 +186,13 @@
     /* ---------- Dashboard ---------- */
     .filtro {
       display: flex; align-items: center; justify-content: space-between; gap: 12px;
-      background: #fff; border: 1px solid var(--borde);
+      background: var(--superficie); border: 1px solid var(--borde);
       border-radius: 14px; padding: 10px 12px 10px 16px; margin-bottom: 14px;
     }
     .filtro label { margin: 0; white-space: nowrap; }
     .filtro select { width: auto; min-width: 160px; height: 44px; }
 
-    .grafico { background: #fff; border: 1px solid var(--borde); border-radius: 18px; padding: 16px; margin-bottom: 14px; }
+    .grafico { background: var(--superficie); border: 1px solid var(--borde); border-radius: 18px; padding: 16px; margin-bottom: 14px; }
     .grafico h3 { margin: 0 0 12px; font-size: 15px; font-weight: 700; }
     .grafico canvas { display: block; width: 100% !important; max-height: 260px; }
     .sin-datos { display: none; padding: 26px 0; text-align: center; color: var(--suave); font-size: 14px; }
@@ -177,7 +200,7 @@
     .grafico.vacio .sin-datos { display: block; }
 
     /* ---------- Historial ---------- */
-    .lista { background: #fff; border: 1px solid var(--borde); border-radius: 18px; padding: 4px 16px; }
+    .lista { background: var(--superficie); border: 1px solid var(--borde); border-radius: 18px; padding: 4px 16px; }
     .mov { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--borde); }
     .mov:last-child { border-bottom: 0; }
     .mov-izq { min-width: 0; }
@@ -192,7 +215,7 @@
     /* ---------- Barra inferior ---------- */
     .tabbar {
       position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
-      background: rgba(255,255,255,.96);
+      background: var(--tabbar-bg);
       -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
       border-top: 1px solid var(--borde);
       padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -204,7 +227,7 @@
       font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
     }
     .tab svg { width: 24px; height: 24px; }
-    .tab.activo { color: var(--tinta); }
+    .tab.activo { color: var(--texto); }
 
     /* ---------- Pantalla de clave ---------- */
     .bloqueo {
@@ -220,7 +243,7 @@
     .bloqueo-caja p { margin: 0 0 22px; color: #9ca3af; font-size: 15px; }
     .bloqueo-caja input { background: #1f2937; border-color: #374151; color: #fff; text-align: center; }
     .bloqueo-caja input:focus { background: #1f2937; border-color: #9ca3af; box-shadow: none; }
-    .bloqueo-caja .btn-principal { background: #f5b942; color: var(--tinta); }
+    .bloqueo-caja .btn-principal { background: #f5b942; color: var(--texto); }
     #errorClave { min-height: 20px; margin-top: 12px; color: #fca5a5; font-size: 14px; font-weight: 600; }
 
     @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
@@ -231,12 +254,12 @@
       border: 2.5px solid rgba(255,255,255,.35); border-top-color: #fff;
       border-radius: 50%; animation: girar .7s linear infinite; vertical-align: -3px;
     }
-    .bloqueo-caja .spinner { border-color: rgba(17,24,39,.25); border-top-color: var(--tinta); }
+    .bloqueo-caja .spinner { border-color: rgba(17,24,39,.25); border-top-color: var(--texto); }
 
     /* ---------- Esqueleto de carga ---------- */
     @keyframes brillo { 0% { background-position: -200px 0; } 100% { background-position: 200px 0; } }
     .esqueleto {
-      background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 37%, #e5e7eb 63%);
+      background: linear-gradient(90deg, var(--esq-1) 25%, var(--esq-2) 37%, var(--esq-1) 63%);
       background-size: 400px 100%; animation: brillo 1.3s ease infinite;
       border-radius: 6px; color: transparent !important;
     }
@@ -639,7 +662,10 @@
   }
 
   const PALETA = ["#1d4ed8", "#0f766e", "#b45309", "#7c3aed", "#be123c", "#4b5563", "#0369a1", "#a16207"];
-  const leyenda = { position: "bottom", labels: { usePointStyle: true, padding: 14, font: { size: 13 } } };
+  const modoOscuro = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const colorTextoGrafico = modoOscuro ? "#e5e7eb" : "#374151";
+  const colorGrid = modoOscuro ? "#2e3648" : "#f1f5f9";
+  const leyenda = { position: "bottom", labels: { usePointStyle: true, padding: 14, font: { size: 13 }, color: colorTextoGrafico } };
 
   function renderDashboard() {
     dashboardDesactualizado = false;
@@ -657,7 +683,7 @@
       type: "bar",
       data: { labels: Object.keys(cat), datasets: [{ data: Object.values(cat), backgroundColor: "#1d4ed8", borderRadius: 6 }] },
       options: { responsive: true, plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true, grid: { color: "#f1f5f9" } }, x: { grid: { display: false } } } }
+        scales: { y: { beginAtZero: true, grid: { color: colorGrid }, ticks: { color: colorTextoGrafico } }, x: { grid: { display: false }, ticks: { color: colorTextoGrafico } } } }
     }, Object.keys(cat).length > 0);
 
     const met = agrupar(lista, "metodoPago");
@@ -682,7 +708,7 @@
         { label: "Gastos",   data: claves.map(function (k) { return meses[k].g; }), borderColor: "#b91c1c", backgroundColor: "rgba(185,28,28,.08)", tension: .35, fill: true }
       ] },
       options: { responsive: true, plugins: { legend: leyenda },
-        scales: { y: { beginAtZero: true, grid: { color: "#f1f5f9" } }, x: { grid: { display: false } } } }
+        scales: { y: { beginAtZero: true, grid: { color: colorGrid }, ticks: { color: colorTextoGrafico } }, x: { grid: { display: false }, ticks: { color: colorTextoGrafico } } } }
     }, claves.length > 0);
   }
 
