@@ -201,9 +201,16 @@
 
     /* ---------- Historial ---------- */
     .lista { background: var(--superficie); border: 1px solid var(--borde); border-radius: 18px; padding: 4px 16px; }
-    .mov { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--borde); }
+    .mov { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 14px 0; border-bottom: 1px solid var(--borde); }
     .mov:last-child { border-bottom: 0; }
     .mov-izq { min-width: 0; }
+    .mov-der { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .mov-borrar {
+      width: 36px; height: 36px; border: 0; background: none; border-radius: 10px;
+      color: var(--suave); display: flex; align-items: center; justify-content: center; cursor: pointer;
+    }
+    .mov-borrar svg { width: 18px; height: 18px; }
+    .mov-borrar:active { background: var(--rojo-bg); color: var(--rojo); }
     .mov-desc { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .mov-meta { margin-top: 2px; font-size: 13px; color: var(--suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .mov-monto { font-size: 16px; font-weight: 800; white-space: nowrap; }
@@ -641,12 +648,21 @@
     }
     lista.innerHTML = movs.slice(0, MAX_HISTORIAL).map(function (m) {
       const ing = m.tipo === "Ingreso";
-      return '<div class="mov">' +
+      return '<div class="mov" data-fila="' + m.fila + '">' +
         '<div class="mov-izq">' +
           '<div class="mov-desc">' + iconoCategoria(m.categoria) + ' ' + esc(m.descripcion || m.categoria) + '</div>' +
           '<div class="mov-meta">' + esc(fechaBonita(m.fecha)) + ' · ' + esc(m.categoria) + ' · ' + esc(m.metodoPago) + '</div>' +
         '</div>' +
-        '<div class="mov-monto ' + (ing ? "ingreso" : "gasto") + '">' + (ing ? "+ " : "− ") + soles(m.monto) + '</div>' +
+        '<div class="mov-der">' +
+          '<div class="mov-monto ' + (ing ? "ingreso" : "gasto") + '">' + (ing ? "+ " : "− ") + soles(m.monto) + '</div>' +
+          '<button class="mov-borrar" type="button" aria-label="Eliminar movimiento">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+              '<polyline points="3 6 5 6 21 6"></polyline>' +
+              '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>' +
+              '<path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>' +
+            '</svg>' +
+          '</button>' +
+        '</div>' +
       '</div>';
     }).join("");
     $("notaHistorial").textContent = movs.length > MAX_HISTORIAL
@@ -814,6 +830,33 @@
     }
   }
   $("btnGuardar").addEventListener("click", guardar);
+
+  // ---------- Eliminar movimiento ----------
+  $("listaMovimientos").addEventListener("click", async function (e) {
+    const boton = e.target.closest(".mov-borrar");
+    if (!boton) return;
+    const fila = boton.closest(".mov").dataset.fila;
+
+    if (!confirm("¿Eliminar este movimiento? No se puede deshacer.")) return;
+
+    boton.disabled = true;
+    boton.style.opacity = ".4";
+    try {
+      await api({ accion: "eliminar", fila: fila });
+      datos.movimientos = datos.movimientos.filter(function (m) { return String(m.fila) !== String(fila); });
+      guardarLS("fin_cache", JSON.stringify(datos));
+      renderResumen();
+      renderHistorial();
+      dashboardDesactualizado = true;
+    } catch (err) {
+      if (err.codigo === "clave") { borrarLS("fin_clave"); clave = ""; mostrarBloqueo("La clave cambió. Ingresa la nueva."); }
+      else {
+        alert(err.codigo ? err.message : "No se pudo eliminar. Revisa tu internet e inténtalo de nuevo.");
+        boton.disabled = false;
+        boton.style.opacity = "";
+      }
+    }
+  });
 
   // ---------- Inicio ----------
   function iniciar() {
