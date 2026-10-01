@@ -129,6 +129,17 @@
     .gastos .monto   { color: var(--rojo); }
     .ahorro .monto   { color: var(--azul); }
 
+    /* ---------- Meta de gasto mensual ---------- */
+    .meta-tarjeta { padding: 16px 18px; }
+    .meta-cabecera { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; font-weight: 600; color: var(--suave); margin-bottom: 8px; }
+    .meta-cabecera span:last-child { font-weight: 800; color: var(--texto); font-size: 14px; }
+    .meta-barra-fondo { width: 100%; height: 10px; border-radius: 6px; background: var(--campo-bg); overflow: hidden; }
+    .meta-barra { height: 100%; border-radius: 6px; width: 0%; background: var(--verde); transition: width .4s ease, background-color .3s ease; }
+    .meta-barra.media { background: #d97706; }
+    .meta-barra.alta { background: var(--rojo); }
+    .meta-aviso { margin-top: 8px; font-size: 13px; font-weight: 600; color: var(--rojo); display: none; }
+    .meta-aviso.visible { display: block; }
+
     /* ---------- Formulario ---------- */
     .tarjeta {
       background: var(--superficie); border: 1px solid var(--borde);
@@ -262,6 +273,11 @@
       border-radius: 50%; animation: girar .7s linear infinite; vertical-align: -3px;
     }
     .bloqueo-caja .spinner { border-color: rgba(17,24,39,.25); border-top-color: var(--texto); }
+    .btn-enlace {
+      display: block; width: 100%; margin-top: 16px; padding: 8px;
+      background: none; border: 0; color: #9ca3af; font: inherit; font-size: 14px; font-weight: 600;
+      text-decoration: underline; cursor: pointer;
+    }
 
     /* ---------- Esqueleto de carga ---------- */
     @keyframes brillo { 0% { background-position: -200px 0; } 100% { background-position: 200px 0; } }
@@ -317,6 +333,17 @@
       </button>
       <div id="errorClave"></div>
     </form>
+
+    <!-- Pantalla de Face ID / Touch ID (reemplaza al formulario cuando ya está activado) -->
+    <div class="bloqueo-caja" id="bloqueoFaceId" style="display:none;">
+      <img class="logo" src="apple-touch-icon.png" alt="">
+      <h2>Mis Finanzas</h2>
+      <p id="faceIdTexto">Desbloquea con Face ID o Touch ID</p>
+      <button type="button" class="btn-principal" id="btnFaceId">
+        <span id="btnFaceIdTexto">🔓 Desbloquear</span>
+      </button>
+      <button type="button" class="btn-enlace" id="btnUsarClave">Usar mi clave en su lugar</button>
+    </div>
   </div>
 
   <!-- ===== Confirmación al guardar ===== -->
@@ -348,6 +375,15 @@
         <div class="item ingresos cargando"><div class="etiqueta">Ingresos</div><div class="monto esqueleto" id="totalIngresos">S/ 0.00</div></div>
         <div class="item gastos cargando"><div class="etiqueta">Gastos</div><div class="monto esqueleto" id="totalGastos">S/ 0.00</div></div>
         <div class="item ahorro cargando"><div class="etiqueta">Ahorro</div><div class="monto esqueleto" id="totalAhorro">S/ 0.00</div></div>
+      </div>
+
+      <div class="tarjeta meta-tarjeta" id="metaTarjeta" style="display:none;">
+        <div class="meta-cabecera">
+          <span>Gasto del mes</span>
+          <span id="metaTexto">S/ 0 de S/ 0</span>
+        </div>
+        <div class="meta-barra-fondo"><div class="meta-barra" id="metaBarra"></div></div>
+        <div class="meta-aviso" id="metaAviso"></div>
       </div>
 
       <div class="tarjeta">
@@ -496,11 +532,79 @@
     return j;
   }
 
-  // ---------- Pantalla de clave ----------
-  function mostrarBloqueo(msg) {
+  // ---------- Face ID / Touch ID (WebAuthn) ----------
+  const FACEID_KEY = "fin_webauthn_id";
+
+  function soportaFaceId() { return !!(window.PublicKeyCredential && navigator.credentials); }
+
+  async function faceIdDisponibleEnEsteTelefono() {
+    if (!soportaFaceId()) return false;
+    try { return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); }
+    catch (e) { return false; }
+  }
+
+  function azar(n) { const a = new Uint8Array(n); crypto.getRandomValues(a); return a; }
+  function codificar(buf) { return btoa(String.fromCharCode.apply(null, new Uint8Array(buf))); }
+  function decodificar(str) { return Uint8Array.from(atob(str), function (c) { return c.charCodeAt(0); }); }
+
+  async function activarFaceId() {
+    try {
+      const credencial = await navigator.credentials.create({ publicKey: {
+        challenge: azar(32),
+        rp: { name: "Mis Finanzas" },
+        user: { id: azar(16), name: "usuario", displayName: "Mis Finanzas" },
+        pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
+        authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
+        timeout: 60000
+      }});
+      guardarLS(FACEID_KEY, codificar(credencial.rawId));
+      return true;
+    } catch (e) { return false; }
+  }
+
+  async function desbloquearConFaceId() {
+    const id = leer(FACEID_KEY);
+    if (!id) return false;
+    try {
+      await navigator.credentials.get({ publicKey: {
+        challenge: azar(32),
+        allowCredentials: [{ id: decodificar(id), type: "public-key" }],
+        userVerification: "required",
+        timeout: 60000
+      }});
+      return true;
+    } catch (e) { return false; }
+  }
+
+  // Tras guardar la clave por primera vez, ofrece activar Face ID
+  async function ofrecerFaceId() {
+    if (leer(FACEID_KEY)) return;                        // ya está activado
+    if (!(await faceIdDisponibleEnEsteTelefono())) return; // este dispositivo no tiene
+    const quiere = confirm("¿Quieres usar Face ID o Touch ID para entrar la próxima vez, sin escribir tu clave?");
+    if (!quiere) return;
+    const ok = await activarFaceId();
+    if (!ok) alert("No se pudo activar. Puedes seguir usando tu clave normalmente.");
+  }
+
+  // ---------- Pantalla de bloqueo ----------
+  function mostrarFormularioClave(msg) {
+    $("formClave").style.display = "";
+    $("bloqueoFaceId").style.display = "none";
     $("bloqueo").classList.add("visible");
     $("errorClave").textContent = msg || "";
     setTimeout(function () { $("inputClave").focus(); }, 50);
+  }
+
+  function mostrarPantallaFaceId() {
+    $("formClave").style.display = "none";
+    $("bloqueoFaceId").style.display = "";
+    $("bloqueo").classList.add("visible");
+  }
+
+  // Compatibilidad con el resto del código: decide cuál de las dos mostrar
+  function mostrarBloqueo(msg) {
+    if (msg === "FACEID") { mostrarPantallaFaceId(); return; }
+    mostrarFormularioClave(msg);
   }
   function ocultarBloqueo() { $("bloqueo").classList.remove("visible"); }
 
@@ -516,6 +620,7 @@
       guardarLS("fin_clave", clave);
       $("inputClave").value = "";
       ocultarBloqueo();
+      await ofrecerFaceId();
     } catch (err) {
       clave = "";
       $("errorClave").textContent = err.codigo === "clave"
@@ -525,6 +630,22 @@
       btn.disabled = false; txt.textContent = "Entrar";
     }
   });
+
+  $("btnFaceId").addEventListener("click", async function () {
+    const btn = $("btnFaceId"), txt = $("btnFaceIdTexto");
+    btn.disabled = true; txt.innerHTML = '<span class="spinner"></span> Verificando...';
+    const exito = await desbloquearConFaceId();
+    btn.disabled = false; txt.innerHTML = "🔓 Desbloquear";
+    if (!exito) { $("faceIdTexto").textContent = "No se pudo verificar. Inténtalo de nuevo."; return; }
+    ocultarBloqueo();
+    try { await cargar(); }
+    catch (err) {
+      if (err.codigo === "clave") { borrarLS("fin_clave"); borrarLS(FACEID_KEY); clave = ""; mostrarBloqueo("La clave cambió. Ingresa la nueva."); }
+      else { $("avisoRed").classList.add("visible"); }
+    }
+  });
+
+  $("btnUsarClave").addEventListener("click", function () { mostrarFormularioClave(""); });
 
   // ---------- Carga de datos ----------
   async function cargar() {
@@ -609,6 +730,34 @@
     $("totalAhorro").textContent = soles(ing - gas);
     document.querySelectorAll("#balanceMini .item").forEach(function (el) { el.classList.remove("cargando"); });
     document.querySelectorAll("#balanceMini .monto").forEach(function (el) { el.classList.remove("esqueleto"); });
+    renderMeta();
+  }
+
+  function renderMeta() {
+    const meta = Number(datos.config.metaMensual) || 0;
+    const tarjeta = $("metaTarjeta");
+    if (meta <= 0) { tarjeta.style.display = "none"; return; }
+
+    const gastoMes = sumar(filtrarPeriodo("mes"), "Gasto");
+    const pct = Math.min(100, Math.round((gastoMes / meta) * 100));
+
+    tarjeta.style.display = "";
+    $("metaTexto").textContent = soles(gastoMes) + " de " + soles(meta);
+    const barra = $("metaBarra");
+    barra.style.width = pct + "%";
+    barra.classList.toggle("media", pct >= 80 && pct < 100);
+    barra.classList.toggle("alta", pct >= 100);
+
+    const aviso = $("metaAviso");
+    if (gastoMes >= meta) {
+      aviso.textContent = "Superaste tu meta del mes.";
+      aviso.classList.add("visible");
+    } else if (pct >= 80) {
+      aviso.textContent = "Ya llevas el " + pct + "% de tu meta mensual.";
+      aviso.classList.add("visible");
+    } else {
+      aviso.classList.remove("visible");
+    }
   }
 
   const ICONOS_CATEGORIA = {
@@ -872,6 +1021,11 @@
     // Muestra al instante lo último que se vio, y actualiza en segundo plano
     const cache = leer("fin_cache");
     if (cache) { try { datos = JSON.parse(cache); renderTodo(); } catch (e) {} }
+
+    if (leer(FACEID_KEY)) {
+      mostrarBloqueo("FACEID");   // pide Face ID antes de mostrar nada más
+      return;
+    }
 
     cargar().catch(function (err) {
       if (err.codigo === "clave") { borrarLS("fin_clave"); clave = ""; mostrarBloqueo("La clave cambió. Ingresa la nueva."); }
